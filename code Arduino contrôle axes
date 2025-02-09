@@ -1,0 +1,187 @@
+// ✅ Définition des Pins pour les 4 Axes (CNC Shield)
+#define STEP_X 2  
+#define DIR_X 5   
+#define STEP_Y 3  
+#define DIR_Y 6   
+#define STEP_Z 4  
+#define DIR_Z 7   
+#define STEP_A 12  
+#define DIR_A 13   
+#define EN 8  // Pin ENABLE des drivers (LOW = actif, HIGH = désactivé)
+
+// ✅ Paramètres mécaniques
+const float transmissionRatio = 1.7778;  // ✅ Rapport de transmission 80/45
+const int stepsPerRevolution = 400; // ✅ Nombre de pas pour 1 tour moteur en Half Step
+const int correctedStepsPerRevolution = stepsPerRevolution * transmissionRatio; // ✅ Nombre de pas pour 1 tour de sortie
+
+// ✅ Paramètres d'accélération et de décélération
+const int minDelay = 2500;  
+const int maxSpeedDelay = 1000;  
+const int accelerationSteps = correctedStepsPerRevolution / 3; 
+
+// ✅ Variables de contrôle
+char selectedAxis = 'X';  // ✅ Axe par défaut
+bool startRotation = false;
+float targetAngle = 0;
+bool stopCommand = false;
+bool reglageMode = false; // ✅ Mode Réglage désactivé par défaut
+
+// ✅ Pointeurs de l’axe sélectionné
+int stepPin = STEP_X;
+int dirPin = DIR_X;
+
+void setup() {
+  // ✅ Initialisation des Pins
+  pinMode(STEP_X, OUTPUT);
+  pinMode(DIR_X, OUTPUT);
+  pinMode(STEP_Y, OUTPUT);
+  pinMode(DIR_Y, OUTPUT);
+  pinMode(STEP_Z, OUTPUT);
+  pinMode(DIR_Z, OUTPUT);
+  pinMode(STEP_A, OUTPUT);
+  pinMode(DIR_A, OUTPUT);
+  pinMode(EN, OUTPUT);
+
+  digitalWrite(EN, LOW); // Active les drivers
+
+  Serial.begin(115200);
+  Serial.println("Moteur optimisé avec sélection de l'axe et mode réglage.");
+  Serial.println("Commandes disponibles :");
+  Serial.println("AXE=X, AXE=Y, AXE=Z, AXE=A → Sélectionne l'axe");
+  Serial.println("START → Effectuer 1 tour");
+  Serial.println("STOP → Annuler une rotation");
+  Serial.println("ANGLE=XX → Déplacer de XX degrés");
+  Serial.println("REGLAGE=ON → Teste le moteur en rotation continue");
+  Serial.println("REGLAGE=OFF → Arrête le mode réglage");
+}
+
+void loop() {
+  checkSerialCommands(); // ✅ Vérifie les commandes du Serial Monitor
+
+  if (reglageMode) {
+    testMotor(); // ✅ Mode de réglage actif
+  } 
+  else if (startRotation) {
+    rotateToAngle(targetAngle);
+    startRotation = false;
+  }
+}
+
+// 🔹 Vérifie les commandes reçues via le Serial Monitor
+void checkSerialCommands() {
+  if (Serial.available()) {
+    String command = Serial.readStringUntil('\n');
+    command.trim();
+
+    if (command.startsWith("AXE=")) {
+      char axis = command.charAt(4);
+      selectAxis(axis);
+    } 
+    else if (command == "START") {
+      if (!reglageMode) {
+        startRotation = true;
+        targetAngle = 360;
+        Serial.print("Démarrage d'un tour sur l'axe ");
+        Serial.println(selectedAxis);
+      }
+    } 
+    else if (command == "STOP") {
+      stopCommand = true;
+      Serial.println("Rotation stoppée.");
+    } 
+    else if (command.startsWith("ANGLE=")) {
+      if (!reglageMode) {
+        targetAngle = command.substring(6).toFloat();
+        targetAngle = constrain(targetAngle, 0, 360);
+        startRotation = true;
+        Serial.print("Démarrage d'une rotation de ");
+        Serial.print(targetAngle);
+        Serial.print(" degrés sur l'axe ");
+        Serial.println(selectedAxis);
+      }
+    } 
+    else if (command == "REGLAGE=ON") {
+      reglageMode = true;
+      Serial.println("Mode Réglage activé : rotation continue pour tester `Vref`.");
+    } 
+    else if (command == "REGLAGE=OFF") {
+      reglageMode = false;
+      Serial.println("Mode Réglage désactivé.");
+    } 
+    else {
+      Serial.println("Commande invalide. Utilisez AXE=X, START, STOP, ANGLE=XX, REGLAGE=ON/OFF.");
+    }
+  }
+}
+
+// 🔹 Sélectionne l’axe actif
+void selectAxis(char axis) {
+  switch (axis) {
+    case 'X':
+      stepPin = STEP_X;
+      dirPin = DIR_X;
+      selectedAxis = 'X';
+      break;
+    case 'Y':
+      stepPin = STEP_Y;
+      dirPin = DIR_Y;
+      selectedAxis = 'Y';
+      break;
+    case 'Z':
+      stepPin = STEP_Z;
+      dirPin = DIR_Z;
+      selectedAxis = 'Z';
+      break;
+    case 'A':
+      stepPin = STEP_A;
+      dirPin = DIR_A;
+      selectedAxis = 'A';
+      break;
+    default:
+      Serial.println("Axe invalide. Choisissez AXE=X, AXE=Y, AXE=Z ou AXE=A.");
+      return;
+  }
+  Serial.print("Axe sélectionné : ");
+  Serial.println(selectedAxis);
+}
+
+// 🔹 Mode Réglage : rotation continue pour ajuster `Vref`
+void testMotor() {
+  singleStep(1500); // ✅ Le moteur tourne en continu avec un délai optimisé
+}
+
+// 🔹 Effectue une rotation sur l’axe sélectionné
+void rotateToAngle(float angle) {
+  int stepsToMove = (angle / 360.0) * correctedStepsPerRevolution;
+
+  // ✅ Accélération progressive
+  for (int i = 0; i < accelerationSteps && i < stepsToMove; i++) {
+    if (stopCommand) return;
+    int delayTime = map(i, 0, accelerationSteps, minDelay, maxSpeedDelay);
+    singleStep(delayTime);
+  }
+
+  // ✅ Mouvement stabilisé
+  for (int i = 0; i < (stepsToMove - 2 * accelerationSteps); i++) {
+    if (stopCommand) return;
+    singleStep(maxSpeedDelay);
+  }
+
+  // ✅ Décélération progressive
+  for (int i = 0; i < accelerationSteps && i < stepsToMove; i++) {
+    if (stopCommand) return;
+    int delayTime = map(i, 0, accelerationSteps, maxSpeedDelay, minDelay);
+    singleStep(delayTime);
+  }
+
+  Serial.println("Rotation terminée.");
+  stopCommand = false;
+}
+
+// 🔹 Gère chaque pas avec un délai variable
+void singleStep(int delayTime) {
+  digitalWrite(stepPin, HIGH);
+  delayMicroseconds(delayTime);
+  digitalWrite(stepPin, LOW);
+  delayMicroseconds(delayTime);
+}
