@@ -1,8 +1,8 @@
 name: Contrôle Raspberry Pi
 
 on:
-  workflow_dispatch:  # Permet de déclencher manuellement depuis GitHub
-  push:               # Se déclenche quand du code est push sur GitHub
+  workflow_dispatch:
+  push:
     branches:
       - main
 
@@ -13,7 +13,7 @@ jobs:
       - name: Connexion SSH au Raspberry Pi
         uses: appleboy/ssh-action@v0.1.8
         with:
-          host: 192.168.1.77  # Adresse IP de ton Raspberry Pi
+          host: 192.168.1.77
           username: pi
           key: ${{ secrets.RASPBERRY_SSH_KEY }}
           script: |
