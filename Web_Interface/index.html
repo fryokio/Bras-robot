@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrôle du Bras Robotisé</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        button {
+            font-size: 20px;
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        #status {
+            margin-top: 20px;
+            font-weight: bold;
+            color: green;
+        }
+    </style>
+    <script>
+        let socket;
+
+        function connectWebSocket() {
+            socket = new WebSocket("ws://192.168.1.77:8765"); // IP du Raspberry Pi
+
+            socket.onopen = function() {
+                console.log("✅ Connecté au serveur WebSockets");
+                document.getElementById("status").textContent = "🟢 Connecté";
+            };
+
+            socket.onmessage = function(event) {
+                console.log("📩 Message reçu du Raspberry Pi :", event.data);
+            };
+
+            socket.onerror = function(error) {
+                console.log("❌ Erreur WebSockets :", error);
+                document.getElementById("status").textContent = "🔴 Erreur WebSocket";
+            };
+
+            socket.onclose = function() {
+                console.log("❌ Connexion fermée, tentative de reconnexion...");
+                document.getElementById("status").textContent = "🟡 Déconnecté, reconnexion...";
+                setTimeout(connectWebSocket, 3000); // Essayer de se reconnecter toutes les 3 secondes
+            };
+        }
+
+        function sendCommand(command) {
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(command);
+                console.log("📤 Commande envoyée :", command);
+            } else {
+                console.log("❌ WebSocket non connecté !");
+            }
+        }
+
+        window.onload = connectWebSocket;
+    </script>
+</head>
+<body>
+    <h1>Contrôle du Bras Robotisé</h1>
+    <p id="status">🟡 Connexion en cours...</p>
+
+    <button onclick="sendCommand('MOVE_X+10')">X ➡️ +10°</button>
+    <button onclick="sendCommand('MOVE_X-10')">X ⬅️ -10°</button>
+    <br>
+    <button onclick="sendCommand('MOVE_Y+10')">Y ⬆️ +10°</button>
+    <button onclick="sendCommand('MOVE_Y-10')">Y ⬇️ -10°</button>
+    <br>
+    <button onclick="sendCommand('MOVE_Z+10')">Z 🔄 +10°</button>
+    <button onclick="sendCommand('MOVE_Z-10')">Z 🔄 -10°</button>
+</body>
+</html>
