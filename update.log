@@ -9,3 +9,14 @@ Already up to date.
 🔄 Flash du firmware sur l'Arduino...
 /home/pi/Bras-robot/update.sh: line 15: arduino-cli: command not found
 ✅ Flash terminé ! 🚀
+🔄 Mise à jour du dépôt GitHub...
+From github.com:fryokio/Bras-robot
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+✅ Dépôt mis à jour.
+🔄 Compilation du firmware Arduino...
+/home/pi/Bras-robot/update.sh: line 10: arduino-cli: command not found
+✅ Compilation terminée.
+🔄 Flash du firmware sur l'Arduino...
+/home/pi/Bras-robot/update.sh: line 15: arduino-cli: command not found
+✅ Flash terminé ! 🚀

@@ -1,0 +1,22 @@
+name: Contrôle Raspberry Pi
+
+on:
+  workflow_dispatch:  # Permet de déclencher manuellement depuis GitHub
+  push:               # Se déclenche quand du code est push sur GitHub
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Connexion SSH au Raspberry Pi
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: 192.168.1.77  # Adresse IP de ton Raspberry Pi
+          username: pi
+          key: ${{ secrets.RASPBERRY_SSH_KEY }}
+          script: |
+            cd /home/pi/Bras-robot
+            git pull origin main
+            python3 /home/pi/Bras-robot/server_ws.py
